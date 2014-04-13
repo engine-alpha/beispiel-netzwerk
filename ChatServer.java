@@ -1,9 +1,9 @@
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Date;
 
-import ea.NetzwerkVerbindung;
-import ea.Server;
+import ea.*;
 
 /**
  * @author Niklas Keller <me@kelunik.com>
@@ -11,30 +11,28 @@ import ea.Server;
  */
 public class ChatServer {
 	private final Server server;
-	private final Thread thread;
 	private final Thread messageThread;
     
-    public ChatServer() {
-        server = new Server(15135) {
-        	public void empfangeString(String s) {
-        		System.out.println("Nachricht: " + s);
+    public ChatServer(final String name) {
+    	this.server = new Server(15135) {
+        	public void empfangeString(String message) {
+        		System.out.printf("[%s] %s\n", new Date().toString(), message);
         	}
         };
         
-        thread = new Thread() {
-            public void run() {
-                while(!isInterrupted()) {
-                    NetzwerkVerbindung verbindung = server.naechsteVerbindungAusgeben();
-                    System.out.println("Neuer Client: " + verbindung.getName() + " @ " + verbindung.getRemoteIP());
-                }
-            }
-        };
+        this.server.setBroadcast(true);
         
-        messageThread = new Thread() {
+        this.server.setOnConnectListener(new ConnectListener() {
+        	public void onConnect(String ip) {
+                System.out.printf("[%s] %s: %s\n", new Date().toString(), "Bot", "Client verbunden: " + ip);
+            }
+        });
+        
+        this.messageThread = new Thread() {
         	public void run() {
         		while(!isInterrupted()) {
         			try {
-        				server.sendeString(readMessage());
+        				server.sendeString(name + ": " + readMessage());
         			} catch(Exception e) {
         				e.printStackTrace();
         			}
@@ -42,10 +40,8 @@ public class ChatServer {
         	}
         };
         
-        thread.start();
-        messageThread.start();
-        
-        setNetworkVisible(true);
+        this.messageThread.start();
+        this.setNetworkVisible(true);
     }
     
     public void setNetworkVisible(boolean visible) {
@@ -53,11 +49,11 @@ public class ChatServer {
     }
     
     public void kill() {
-    	thread.interrupt();
+    	setNetworkVisible(false);
+    	
     	messageThread.interrupt();
     	
     	try {
-			thread.join();
 			messageThread.join();
 		} catch (InterruptedException e) {
 			e.printStackTrace();

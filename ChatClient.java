@@ -1,10 +1,9 @@
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Date;
 
-import ea.Client;
-import ea.DiscoveryListener;
-import ea.ServerDiscovery;
+import ea.*;
 
 /**
  * @author Niklas Keller <me@kelunik.com>
@@ -13,22 +12,22 @@ import ea.ServerDiscovery;
 public class ChatClient {
 	private Thread messageThread;
 	
-    public ChatClient() {
-        ServerDiscovery.startDiscovery(new DiscoveryListener() {
-            public void onServerGefunden(String ip) {
-                final Client client = new Client(ip, 15135) {
-                    public void empfangeString(String s) {
-                        System.out.println("Nachricht: " + s);
+    public ChatClient(final String name) {    	
+        ServerDiscovery.startDiscovery(new ConnectListener() {
+            public void onConnect(String ip) {
+            	final Client client = new Client(ip, 15135) {
+                    public void empfangeString(String message) {
+                    	System.out.printf("[%s] %s\n", new Date().toString(), message);
                     }
                 };
                 
-                client.sendeString("Verbunden mit " + ip + ":" + 15135);
+                System.out.printf("[%s] %s: %s\n", new Date().toString(), "Bot", "Server verbunden: " + ip);
                 
                 messageThread = new Thread() {
                 	public void run() {
                 		while(!isInterrupted()) {
                 			try {
-                				client.sendeString(readMessage());
+                				client.sendeString(name + ": " + readMessage());
                 			} catch(Exception e) {
                 				e.printStackTrace();
                 			}
@@ -42,6 +41,10 @@ public class ChatClient {
     }
     
     public void kill() {
+    	if(messageThread == null) {
+    		return;
+    	}
+    	
     	messageThread.interrupt();
     	
     	try {
